@@ -19,7 +19,7 @@
       <HintPath>Libs\BepInEx.Core.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx.Unity.IL2CPP">
-      <HintPath>Libs\BepInEx.Unity.IL2-CPP.dll</HintPath>
+      <HintPath>Libs\BepInEx.Unity.IL2CPP.dll</HintPath>
     </Reference>
     <Reference Include="0Harmony">
       <HintPath>Libs\0Harmony.dll</HintPath>
