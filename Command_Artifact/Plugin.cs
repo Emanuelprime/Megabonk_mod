@@ -4,6 +4,8 @@ using HarmonyLib;
 using UnityEngine;
 using System.Collections.Generic;
 using Assets.Scripts.Inventory__Items__Pickups.Chests;
+using Assets.Scripts.Inventory__Items__Pickups.Items;
+
 
 
 namespace Command_Artifact
@@ -33,10 +35,10 @@ namespace Command_Artifact
 
             for (int i = 0; i < itemsToShow.Count; i++)
             {
-                // TODO: Substitua ".itemName" pelo nome real da propriedade do nome do item
-                if (GUI.Button(new Rect(Screen.width / 2 - 150, Screen.height / 2 - 100 + (i * 30), 300, 25), itemsToShow[i].itemName))
+                
+                if (GUI.Button(new Rect(Screen.width / 2 - 150, Screen.height / 2 - 100 + (i * 30), 300, 25), itemsToShow[i].GetName()))
                 {
-                    Log.LogInfo($"Jogador escolheu: {itemsToShow[i].itemName}");
+                    Log.LogInfo($"Jogador escolheu: {itemsToShow[i].GetName()}");
                     GiveItemAndPay(itemsToShow[i]);
                     IsChoosingItem = false; // Fecha a UI
                 }
