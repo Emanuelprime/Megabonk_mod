@@ -1,9 +1,10 @@
 ﻿using BepInEx;
+using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
 using UnityEngine;
 using System.Collections.Generic;
-// TODO: Adicione aqui o "using" para o namespace da classe InteractableChest!
-// Ex: using Assets.Scripts.Inventory__Items__Pickups.Chests;
+using Assets.Scripts.Inventory__Items__Pickups.Chests;
+
 
 namespace Command_Artifact
 {
