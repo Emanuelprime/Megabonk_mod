@@ -17,17 +17,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>Libs\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx.Core">
-      <HintPath>Libs\BepInEx.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx.Unity.IL2CPP">
-      <HintPath>Libs\BepInEx.Unity.IL2CPP.dll</HintPath>
-    </Reference>
-    <Reference Include="Il2CppInterop.Runtime">
-      <HintPath>Libs\Il2CppInterop.Runtime.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+  <Reference Include="Assembly-CSharp">
+    <HintPath>Libs\Assembly-CSharp.dll</HintPath>
+  </Reference>
+  <Reference Include="BepInEx.Core">
+    <HintPath>Libs\BepInEx.Core.dll</HintPath>
+  </Reference>
+  <Reference Include="BepInEx.Unity.IL2CPP">
+    <HintPath>Libs\BepInEx.Unity.IL2CPP.dll</HintPath>
+  </Reference>
+  <Reference Include="0Harmony">
+    <HintPath>Libs\0Harmony.dll</HintPath>
+  </Reference>
+  <Reference Include="Il2CppInterop.Runtime">
+    <HintPath>Libs\Il2CppInterop.Runtime.dll</HintPath>
+  </Reference>
+  <Reference Include="UnityEngine.CoreModule">
+    <HintPath>Libs\UnityEngine.CoreModule.dll</HintPath>
+  </Reference>
+</ItemGroup>
 </Project>
