@@ -1,0 +1,9 @@
+{
+    "name": "Command_Artifact",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/GITHUB_OWNER/GITHUB_REPO_NAME",
+    "description": "This mod is supposed to be almost like the Risk of Rain 2 Command Artifact, in all the chests you can choose the item depending on the rarity of the item",
+    "dependencies": [
+        "BepInEx-BepInExPack_IL2CPP-6.0.733"
+    ]
+}
