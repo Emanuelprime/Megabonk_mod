@@ -1,0 +1,10 @@
+C:\Users\marco\Desktop\ModMegabonk\Command_Artifact\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.csproj.AssemblyReference.cache
+C:\Users\marco\Desktop\ModMegabonk\Command_Artifact\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\marco\Desktop\ModMegabonk\Command_Artifact\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.AssemblyInfoInputs.cache
+C:\Users\marco\Desktop\ModMegabonk\Command_Artifact\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.AssemblyInfo.cs
+C:\Users\marco\Desktop\ModMegabonk\Command_Artifact\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.csproj.CoreCompileInputs.cache
+C:\Users\marco\Desktop\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.csproj.AssemblyReference.cache
+C:\Users\marco\Desktop\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\marco\Desktop\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.AssemblyInfoInputs.cache
+C:\Users\marco\Desktop\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.AssemblyInfo.cs
+C:\Users\marco\Desktop\Megabonk_mod\Command_Artifact\obj\Debug\net6.0\Command_Artifact.csproj.CoreCompileInputs.cache
