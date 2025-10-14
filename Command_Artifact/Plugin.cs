@@ -3,12 +3,10 @@ using HarmonyLib;
 using UnityEngine;
 using BepInEx.Unity.IL2CPP;
 using System.Collections.Generic;
-using System.Linq; // Filtra lista
-using Assets.Scripts.Inventory__Items__Pickups.Chests;
-using Assets.Scripts.Inventory__Items__Pickups.Items;
-
-// NOTA: O DataManager pode não precisar de um 'using' se estiver no namespace global.
-// Se o VS Code sublinhar 'DataManager' de vermelho, teremos que encontrar o namespace dele.
+using System.Linq; //filtrar lista
+using Assets.Scripts.Inventory__Items__Pickups.Chests; //  InteractableChest
+using Assets.Scripts.Inventory__Items__Pickups.Items; //  EItem e EItemRarity
+using Assets.Scripts.Inventory__Items__Pickups.Interactables; // EChest
 
 namespace Command_Artifact
 {
@@ -25,7 +23,7 @@ namespace Command_Artifact
         public override void Load()
         {
             Instance = this;
-            Log.LogInfo("Artefato do Comando Ativado!");
+            Log.LogInfo("--- MOD ATUALIZADO COM SUCESSO! VERSÃO COM TRY-CATCH UNIVERSAL ---");
             harmony.PatchAll();
         }
 
@@ -33,36 +31,24 @@ namespace Command_Artifact
         {
             if (!IsChoosingItem) return;
 
-            // --- Lógica da UI (Interface do Usuário) ---
             GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 200, 400, 400), "Artefato do Comando: Escolha um Item");
 
-            // Desenha um botão para cada item na nossa lista
             for (int i = 0; i < itemsToShow.Count; i++)
             {
-                // Limita a quantidade de itens na tela para não sobrecarregar
                 if (i >= 10) break;
 
-                // GUI.Button(new Rect(x, y, largura, altura), "Texto do Botão")
                 if (GUI.Button(new Rect(Screen.width / 2 - 150, Screen.height / 2 - 150 + (i * 30), 300, 25), itemsToShow[i].GetName()))
                 {
                     Log.LogInfo($"Jogador escolheu: {itemsToShow[i].GetName()}");
                     GiveItemAndPay(itemsToShow[i]);
-                    IsChoosingItem = false; // Fecha a UI
+                    IsChoosingItem = false;
                 }
             }
         }
 
         private void GiveItemAndPay(ItemData chosenItem)
         {
-            // TODO: (Próximo Passo) Encontre a função do jogo que deduz dinheiro do jogador
-            // Ex: PlayerStats.Instance.SpendGold(currentChest.GetPrice());
-
-            // TODO: (Próximo Passo) Encontre a função do jogo que dá um item ao jogador
-            // Ex: PlayerInventory.Instance.AddItem(chosenItem.eItem);
-
-            // TODO: (Próximo Passo) Chame a função que abre o baú visualmente sem dar outro item
-            // Ex: currentChest.PlayOpeningAnimation();
-
+            // TODO: (Próximo Passo) Implementar a lógica de pagamento e entrega
             Log.LogInfo("Item dado e pagamento efetuado (lógica a ser implementada)!");
         }
     }
@@ -91,38 +77,33 @@ namespace Command_Artifact
             var chestType = __instance.chestType;
             Plugin.Instance.Log.LogInfo($"Tipo do baú: {chestType}");
 
-            // --- LÓGICA ATUALIZADA PARA CRIAR A LISTA DE ITENS ---
+            // --- LÓGICA DE SORTEIO E FILTRAGEM ATUALIZADA ---
 
-            // 1. Criamos nossa lista mestra de todos os itens do jogo
+            // 1. SORTEAMOS a raridade do item, em vez de traduzir diretamente
+            EItemRarity sorteada = RollRarityForChest(chestType);
+            Plugin.Instance.Log.LogInfo($"Sorteio de raridade do baú {chestType}: {sorteada}!");
+
+            // 2. Construímos nossa lista mestra de todos os itens do jogo
             List<ItemData> allItemsInGame = new List<ItemData>();
             foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
             {
-                // --- AQUI ESTÁ A CORREÇÃO ---
                 try
                 {
-                    // TENTAMOS pegar o item
                     ItemData item = DataManager.Instance.GetItem(itemEnum);
-
-                    // Verificamos se o item existe e se ele pode aparecer no jogo
                     if (item != null && item.inItemPool)
                     {
                         allItemsInGame.Add(item);
                     }
                 }
-                catch (System.Collections.Generic.KeyNotFoundException)
-                {
-                    // SE DER O ERRO "KeyNotFound", nós o ignoramos e continuamos o loop.
-                    // Não fazemos nada aqui dentro, simplesmente evitamos que o jogo quebre.
-                }
+                catch (System.Exception) { /* Ignora itens fantasma */ }
             }
-            Plugin.Instance.Log.LogInfo($"Encontrado(s) {allItemsInGame.Count} item(ns) no total no jogo.");
 
-            // 2. Filtramos a lista para pegar apenas os itens da raridade correta
-            // TODO: (Próximo Passo) Precisamos descobrir como comparar 'chestType' com 'item.rarity'
-            // Por enquanto, vamos mostrar TODOS os itens para testar a UI.
-            Plugin.itemsToShow = allItemsInGame;
+            // 3. Filtramos a lista pela raridade que o nosso sorteio acabou de decidir
+            Plugin.itemsToShow = allItemsInGame.Where(item => item.rarity == sorteada).ToList();
 
-            // --------------------------------------------------------
+            Plugin.Instance.Log.LogInfo($"Filtrando para a raridade {sorteada}. Encontrado(s) {Plugin.itemsToShow.Count} item(ns) correspondente(s).");
+
+            // ----------------------------------------------------
 
             // Ativamos nossa UI
             Plugin.IsChoosingItem = true;
@@ -130,6 +111,40 @@ namespace Command_Artifact
             // Cancelamos o método original do jogo
             __result = true;
             return false;
+        }
+
+        // --- NOSSA NOVA FUNÇÃO "SORTEADORA" ---
+        private static EItemRarity RollRarityForChest(EChest chestType)
+        {
+            // TODO: (Avançado) No futuro, poderíamos pegar a estatística de 'sorte' do jogador aqui
+            // float playerLuck = PlayerStats.Instance.luck;
+
+            // Rola um dado de 100 lados
+            float roll = UnityEngine.Random.Range(0f, 100f);
+
+            // Estas porcentagens são suposições e podem ser ajustadas para balanceamento!
+            // Exemplo para um baú Normal:
+            if (chestType == EChest.Normal || chestType == EChest.Free)
+            {
+                if (roll < 75f) // 75% de chance
+                {
+                    return EItemRarity.Common;
+                }
+                if (roll < 95f) // 20% de chance (de 75 a 95)
+                {
+                    return EItemRarity.Rare;
+                }
+                // 5% de chance restantes (de 95 a 100)
+                return EItemRarity.Epic;
+            }
+
+            if (chestType == EChest.Corrupt)
+            {
+                return EItemRarity.Corrupted;
+            }
+
+            // Padrão seguro caso encontremos um baú desconhecido
+            return EItemRarity.Common;
         }
     }
 }
