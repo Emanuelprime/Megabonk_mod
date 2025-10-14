@@ -97,13 +97,22 @@ namespace Command_Artifact
             List<ItemData> allItemsInGame = new List<ItemData>();
             foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
             {
-                // Usamos a "máquina de vendas" para pegar o ItemData completo
-                ItemData item = DataManager.Instance.GetItem(itemEnum);
-
-                // Verificamos se o item existe e se ele pode aparecer no jogo
-                if (item != null && item.inItemPool)
+                // --- AQUI ESTÁ A CORREÇÃO ---
+                try
                 {
-                    allItemsInGame.Add(item);
+                    // TENTAMOS pegar o item
+                    ItemData item = DataManager.Instance.GetItem(itemEnum);
+
+                    // Verificamos se o item existe e se ele pode aparecer no jogo
+                    if (item != null && item.inItemPool)
+                    {
+                        allItemsInGame.Add(item);
+                    }
+                }
+                catch (System.Collections.Generic.KeyNotFoundException)
+                {
+                    // SE DER O ERRO "KeyNotFound", nós o ignoramos e continuamos o loop.
+                    // Não fazemos nada aqui dentro, simplesmente evitamos que o jogo quebre.
                 }
             }
             Plugin.Instance.Log.LogInfo($"Encontrado(s) {allItemsInGame.Count} item(ns) no total no jogo.");
