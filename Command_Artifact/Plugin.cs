@@ -1,12 +1,14 @@
 ﻿using BepInEx;
-using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
 using UnityEngine;
+using BepInEx.Unity.IL2CPP;
 using System.Collections.Generic;
+using System.Linq; // Filtra lista
 using Assets.Scripts.Inventory__Items__Pickups.Chests;
 using Assets.Scripts.Inventory__Items__Pickups.Items;
 
-
+// NOTA: O DataManager pode não precisar de um 'using' se estiver no namespace global.
+// Se o VS Code sublinhar 'DataManager' de vermelho, teremos que encontrar o namespace dele.
 
 namespace Command_Artifact
 {
@@ -15,28 +17,33 @@ namespace Command_Artifact
     {
         private readonly Harmony harmony = new Harmony("Prime_Purpura.Command_Artifact");
 
+        public static Plugin Instance;
+        public static InteractableChest currentChest;
         public static bool IsChoosingItem = false;
-        // TODO: Substitua "ItemData" pelo nome real da classe de itens do jogo
-        private static List<ItemData> itemsToShow = new List<ItemData>();
-        private static InteractableChest currentChest;
+        public static List<ItemData> itemsToShow = new List<ItemData>();
 
         public override void Load()
         {
+            Instance = this;
             Log.LogInfo("Artefato do Comando Ativado!");
             harmony.PatchAll();
         }
 
-        // --- A Interface Gráfica (UI) ---
         public void OnGUI()
         {
             if (!IsChoosingItem) return;
 
-            GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 150, 400, 300), "Artefato do Comando: Escolha um Item");
+            // --- Lógica da UI (Interface do Usuário) ---
+            GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 200, 400, 400), "Artefato do Comando: Escolha um Item");
 
+            // Desenha um botão para cada item na nossa lista
             for (int i = 0; i < itemsToShow.Count; i++)
             {
-                
-                if (GUI.Button(new Rect(Screen.width / 2 - 150, Screen.height / 2 - 100 + (i * 30), 300, 25), itemsToShow[i].GetName()))
+                // Limita a quantidade de itens na tela para não sobrecarregar
+                if (i >= 10) break;
+
+                // GUI.Button(new Rect(x, y, largura, altura), "Texto do Botão")
+                if (GUI.Button(new Rect(Screen.width / 2 - 150, Screen.height / 2 - 150 + (i * 30), 300, 25), itemsToShow[i].GetName()))
                 {
                     Log.LogInfo($"Jogador escolheu: {itemsToShow[i].GetName()}");
                     GiveItemAndPay(itemsToShow[i]);
@@ -47,61 +54,73 @@ namespace Command_Artifact
 
         private void GiveItemAndPay(ItemData chosenItem)
         {
-            // TODO: Encontre a função do jogo que deduz dinheiro do jogador
-            // Ex: Player.Instance.money -= currentChest.GetPrice();
+            // TODO: (Próximo Passo) Encontre a função do jogo que deduz dinheiro do jogador
+            // Ex: PlayerStats.Instance.SpendGold(currentChest.GetPrice());
 
-            // TODO: Encontre a função do jogo que dá um item ao jogador
-            // Ex: Player.Instance.inventory.AddItem(chosenItem);
+            // TODO: (Próximo Passo) Encontre a função do jogo que dá um item ao jogador
+            // Ex: PlayerInventory.Instance.AddItem(chosenItem.eItem);
 
-            // TODO: Chame a função que abre o baú visualmente sem dar outro item
+            // TODO: (Próximo Passo) Chame a função que abre o baú visualmente sem dar outro item
             // Ex: currentChest.PlayOpeningAnimation();
 
-            Log.LogInfo("Item dado e pagamento efetuado!");
+            Log.LogInfo("Item dado e pagamento efetuado (lógica a ser implementada)!");
         }
     }
 
     // --- O PATCH ---
-    // Este é o endereço que encontramos!
     [HarmonyPatch(typeof(InteractableChest), "Interact")]
     public static class InteractPatch
     {
-        // Um PREFIX roda ANTES do método original
         [HarmonyPrefix]
         public static bool InterceptInteraction(InteractableChest __instance, ref bool __result)
         {
-            // __instance é uma referência ao baú com o qual interagimos
-
-            // Se a UI já estiver aberta, não faz nada
             if (Plugin.IsChoosingItem)
             {
-                __result = false; // Diz ao jogo que a interação falhou
-                return false;     // Cancela o método original
+                __result = false;
+                return false;
             }
 
-            // 1. Verificamos se o jogador pode pagar
             if (!__instance.CanAfford())
             {
-                Plugin.Log.LogInfo("Não pode pagar. Deixando o jogo original lidar com isso.");
-                return true; // Deixa o método original rodar para mostrar a mensagem de "sem dinheiro"
+                Plugin.Instance.Log.LogInfo("Não pode pagar. Deixando o jogo original lidar com isso.");
+                return true;
             }
 
-            Plugin.Log.LogInfo("Pode pagar! Interceptando interação...");
+            Plugin.Instance.Log.LogInfo("Pode pagar! Interceptando interação...");
             Plugin.currentChest = __instance;
+            var chestType = __instance.chestType;
+            Plugin.Instance.Log.LogInfo($"Tipo do baú: {chestType}");
 
-            // 2. Pegamos a raridade/tipo do baú
-            var chestType = __instance.chestType; // Usamos a propriedade que vimos no dnSpy
-            Plugin.Log.LogInfo($"Tipo do baú: {chestType}");
+            // --- LÓGICA ATUALIZADA PARA CRIAR A LISTA DE ITENS ---
 
-            // 3. Pegamos todos os itens daquela raridade
-            // TODO: Precisamos encontrar a "lista mestra" de itens do jogo para preencher isso
-            // Plugin.itemsToShow = ItemDatabase.GetItemsByRarity(chestType);
+            // 1. Criamos nossa lista mestra de todos os itens do jogo
+            List<ItemData> allItemsInGame = new List<ItemData>();
+            foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
+            {
+                // Usamos a "máquina de vendas" para pegar o ItemData completo
+                ItemData item = DataManager.Instance.GetItem(itemEnum);
 
-            // 4. Ativamos nossa UI
+                // Verificamos se o item existe e se ele pode aparecer no jogo
+                if (item != null && item.inItemPool)
+                {
+                    allItemsInGame.Add(item);
+                }
+            }
+            Plugin.Instance.Log.LogInfo($"Encontrado(s) {allItemsInGame.Count} item(ns) no total no jogo.");
+
+            // 2. Filtramos a lista para pegar apenas os itens da raridade correta
+            // TODO: (Próximo Passo) Precisamos descobrir como comparar 'chestType' com 'item.rarity'
+            // Por enquanto, vamos mostrar TODOS os itens para testar a UI.
+            Plugin.itemsToShow = allItemsInGame;
+
+            // --------------------------------------------------------
+
+            // Ativamos nossa UI
             Plugin.IsChoosingItem = true;
 
-            // 5. CANCELAMOS o método original do jogo
-            __result = true; // Dizemos ao jogo que a "interação" foi um sucesso
-            return false;    // Retornar 'false' impede que o método original seja executado!
+            // Cancelamos o método original do jogo
+            __result = true;
+            return false;
         }
     }
 }
