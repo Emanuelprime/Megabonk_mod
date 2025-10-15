@@ -13,7 +13,6 @@ namespace Command_Artifact
 {
     public class CommandUI : MonoBehaviour
     {
-
         public void OnGUI()
         {
             if (!Plugin.IsChoosingItem) return;
@@ -30,8 +29,6 @@ namespace Command_Artifact
                     {
                         Plugin.Instance.Log.LogInfo($"Jogador escolheu: {Plugin.itemsToShow[i].GetName()}");
                         Plugin.Instance.GiveItemAndPay(Plugin.itemsToShow[i]);
-
-                        // Desliga a UI e restaura o jogo
                         Plugin.CloseCommandUI();
                     }
                 }
@@ -44,16 +41,13 @@ namespace Command_Artifact
         }
     }
 
-    [BepInPlugin("Prime_Purpura.Command_Artifact", "Command_Artifact", "1.1.0")]
+    [BepInPlugin("Prime_Purpura.Command_Artifact", "Command_Artifact", "1.3.0")]
     public class Plugin : BasePlugin
     {
         private readonly Harmony harmony = new Harmony("Prime_Purpura.Command_Artifact");
         public static Plugin Instance;
 
-        // --- MUDANÇA 1: OTIMIZAÇÃO ---
-        // Guardamos a lista mestra de itens aqui, para construir apenas uma vez.
         public static List<ItemData> AllItemsMasterList = new List<ItemData>();
-
         public static InteractableChest currentChest;
         public static bool IsChoosingItem = false;
         public static List<ItemData> itemsToShow = new List<ItemData>();
@@ -67,33 +61,32 @@ namespace Command_Artifact
             uiHost.AddComponent<CommandUI>();
             GameObject.DontDestroyOnLoad(uiHost);
 
-            // --- MUDANÇA 1 (CONTINUAÇÃO): Construímos a lista mestra na inicialização ---
-            BuildMasterItemList();
+            // A chamada para BuildMasterItemList() foi REMOVIDA daqui.
 
-            Log.LogInfo("--- MOD ATUALIZADO COM OTIMIZAÇÃO E CONTROLE DE ESTADO ---");
+            Log.LogInfo("--- MOD ATUALIZADO (v1.3) COM CONSTRUÇÃO JUST-IN-TIME ---");
             harmony.PatchAll();
         }
 
-        // --- NOVAS FUNÇÕES DE CONTROLE ---
         public static void OpenCommandUI()
         {
             IsChoosingItem = true;
-            Time.timeScale = 0f; // Pausa o jogo
-            Cursor.visible = true; // Mostra o cursor
-            Cursor.lockState = CursorLockMode.None; // Destrava o cursor
+            Time.timeScale = 0f;
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
         }
 
         public static void CloseCommandUI()
         {
             IsChoosingItem = false;
-            Time.timeScale = 1f; // Retoma o tempo do jogo
-            Cursor.visible = false; // Esconde o cursor
-            Cursor.lockState = CursorLockMode.Locked; // Trava o cursor no centro (padrão de jogos)
+            Time.timeScale = 1f;
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
         }
 
-        private void BuildMasterItemList()
+        // A função para construir a lista continua aqui, mas só será chamada quando necessário.
+        public void BuildMasterItemList()
         {
-            Log.LogInfo("Construindo lista mestra de itens...");
+            Log.LogInfo("Construindo lista mestra de itens (Just-in-Time)...");
             foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
             {
                 try
@@ -102,6 +95,7 @@ namespace Command_Artifact
                     if (item != null && item.inItemPool)
                     {
                         AllItemsMasterList.Add(item);
+                        //Log.LogInfo($"Adicionado: {item.GetName()} (Raridade: {item.rarity})"); // Descomente para depurar raridades
                     }
                 }
                 catch (System.Exception) { /* Ignora itens fantasma */ }
@@ -133,16 +127,23 @@ namespace Command_Artifact
                 return true;
             }
 
+            // --- AQUI ESTÁ A CORREÇÃO "JUST-IN-TIME" ---
+            // Verificamos se a lista mestra já foi construída.
+            if (Plugin.AllItemsMasterList.Count == 0)
+            {
+                // Se não foi, nós a construímos AGORA, na primeira vez que um baú é aberto.
+                Plugin.Instance.BuildMasterItemList();
+            }
+            // ---------------------------------------------
+
             Plugin.currentChest = __instance;
             var chestType = __instance.chestType;
             EItemRarity sorteada = RollRarityForChest(chestType);
 
-            // --- MUDANÇA 1 (FINAL): Usamos a lista mestra já pronta, que é muito mais rápido ---
             Plugin.itemsToShow = Plugin.AllItemsMasterList.Where(item => item.rarity == sorteada).ToList();
 
             Plugin.Instance.Log.LogInfo($"Sorteio: {sorteada}. Encontrado(s) {Plugin.itemsToShow.Count} item(ns) para escolher.");
 
-            // --- MUDANÇA 2: Usamos nossa função de controle para abrir a UI ---
             Plugin.OpenCommandUI();
 
             __result = true;
