@@ -3,19 +3,16 @@ using HarmonyLib;
 using UnityEngine;
 using BepInEx.Unity.IL2CPP;
 using System.Collections.Generic;
-using System.Linq; //filtrar lista
-using Assets.Scripts.Inventory__Items__Pickups.Chests; // InteractableChest
-using Assets.Scripts.Inventory__Items__Pickups.Items; // EItem e EItemRarity
-using Assets.Scripts.Inventory__Items__Pickups.Interactables; // EChest
-using Il2CppInterop.Runtime.Injection; // Essencial para registrar componentes
+using System.Linq;
+using Assets.Scripts.Inventory__Items__Pickups.Chests;
+using Assets.Scripts.Inventory__Items__Pickups.Items;
+using Assets.Scripts.Inventory__Items__Pickups.Interactables;
+using Il2CppInterop.Runtime.Injection;
 
 namespace Command_Artifact
 {
-    // --- NOSSO "ADAPTADOR" PARA O MOTOR DO JOGO ---
     public class CommandUI : MonoBehaviour
     {
-        // A classe MonoBehaviour não precisa de um construtor customizado.
-        // Removendo o construtor problemático, o C# usará o padrão, que é o correto.
 
         public void OnGUI()
         {
@@ -33,24 +30,30 @@ namespace Command_Artifact
                     {
                         Plugin.Instance.Log.LogInfo($"Jogador escolheu: {Plugin.itemsToShow[i].GetName()}");
                         Plugin.Instance.GiveItemAndPay(Plugin.itemsToShow[i]);
-                        Plugin.IsChoosingItem = false;
+
+                        // Desliga a UI e restaura o jogo
+                        Plugin.CloseCommandUI();
                     }
                 }
                 catch (System.Exception ex)
                 {
-                    Plugin.Instance.Log.LogError($"Erro ao desenhar o botão para o item nº {i} ({Plugin.itemsToShow[i].GetName()}). Erro: {ex.Message}");
-                    Plugin.IsChoosingItem = false;
+                    Plugin.Instance.Log.LogError($"Erro ao desenhar o botão para o item nº {i}: {ex.Message}");
+                    Plugin.CloseCommandUI();
                 }
             }
         }
     }
 
-    // --- SUA CLASSE PLUGIN PRINCIPAL ---
-    [BepInPlugin("Prime_Purpura.Command_Artifact", "Command_Artifact", "1.0.0")]
+    [BepInPlugin("Prime_Purpura.Command_Artifact", "Command_Artifact", "1.1.0")]
     public class Plugin : BasePlugin
     {
         private readonly Harmony harmony = new Harmony("Prime_Purpura.Command_Artifact");
         public static Plugin Instance;
+
+        // --- MUDANÇA 1: OTIMIZAÇÃO ---
+        // Guardamos a lista mestra de itens aqui, para construir apenas uma vez.
+        public static List<ItemData> AllItemsMasterList = new List<ItemData>();
+
         public static InteractableChest currentChest;
         public static bool IsChoosingItem = false;
         public static List<ItemData> itemsToShow = new List<ItemData>();
@@ -58,27 +61,61 @@ namespace Command_Artifact
         public override void Load()
         {
             Instance = this;
-
-            // 1. REGISTRAMOS nosso componente customizado
             ClassInjector.RegisterTypeInIl2Cpp<CommandUI>();
 
-            // 2. Criamos o objeto e adicionamos o componente
             GameObject uiHost = new GameObject("CommandUI_Host");
             uiHost.AddComponent<CommandUI>();
             GameObject.DontDestroyOnLoad(uiHost);
 
-            Log.LogInfo("--- MOD ATUALIZADO E PRONTO ---");
+            // --- MUDANÇA 1 (CONTINUAÇÃO): Construímos a lista mestra na inicialização ---
+            BuildMasterItemList();
+
+            Log.LogInfo("--- MOD ATUALIZADO COM OTIMIZAÇÃO E CONTROLE DE ESTADO ---");
             harmony.PatchAll();
+        }
+
+        // --- NOVAS FUNÇÕES DE CONTROLE ---
+        public static void OpenCommandUI()
+        {
+            IsChoosingItem = true;
+            Time.timeScale = 0f; // Pausa o jogo
+            Cursor.visible = true; // Mostra o cursor
+            Cursor.lockState = CursorLockMode.None; // Destrava o cursor
+        }
+
+        public static void CloseCommandUI()
+        {
+            IsChoosingItem = false;
+            Time.timeScale = 1f; // Retoma o tempo do jogo
+            Cursor.visible = false; // Esconde o cursor
+            Cursor.lockState = CursorLockMode.Locked; // Trava o cursor no centro (padrão de jogos)
+        }
+
+        private void BuildMasterItemList()
+        {
+            Log.LogInfo("Construindo lista mestra de itens...");
+            foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
+            {
+                try
+                {
+                    ItemData item = DataManager.Instance.GetItem(itemEnum);
+                    if (item != null && item.inItemPool)
+                    {
+                        AllItemsMasterList.Add(item);
+                    }
+                }
+                catch (System.Exception) { /* Ignora itens fantasma */ }
+            }
+            Log.LogInfo($"Lista mestra construída com {AllItemsMasterList.Count} itens.");
         }
 
         public void GiveItemAndPay(ItemData chosenItem)
         {
-            // TODO: (Próximo Passo) Implementar a lógica de pagamento e entrega
+            // TODO: Preencher com a lógica de pagar e dar o item
             Log.LogInfo("Item dado e pagamento efetuado (lógica a ser implementada)!");
         }
     }
 
-    // --- O PATCH ---
     [HarmonyPatch(typeof(InteractableChest), "Interact")]
     public static class InteractPatch
     {
@@ -93,37 +130,20 @@ namespace Command_Artifact
 
             if (!__instance.CanAfford())
             {
-                Plugin.Instance.Log.LogInfo("Não pode pagar. Deixando o jogo original lidar com isso.");
                 return true;
             }
 
-            Plugin.Instance.Log.LogInfo("Pode pagar! Interceptando interação...");
             Plugin.currentChest = __instance;
             var chestType = __instance.chestType;
-            Plugin.Instance.Log.LogInfo($"Tipo do baú: {chestType}");
-
             EItemRarity sorteada = RollRarityForChest(chestType);
-            Plugin.Instance.Log.LogInfo($"Sorteio de raridade do baú {chestType}: {sorteada}!");
 
-            List<ItemData> allItemsInGame = new List<ItemData>();
-            foreach (EItem itemEnum in System.Enum.GetValues(typeof(EItem)))
-            {
-                try
-                {
-                    ItemData item = DataManager.Instance.GetItem(itemEnum);
-                    if (item != null && item.inItemPool)
-                    {
-                        allItemsInGame.Add(item);
-                    }
-                }
-                catch (System.Exception) { /* Ignora itens fantasma */ }
-            }
+            // --- MUDANÇA 1 (FINAL): Usamos a lista mestra já pronta, que é muito mais rápido ---
+            Plugin.itemsToShow = Plugin.AllItemsMasterList.Where(item => item.rarity == sorteada).ToList();
 
-            Plugin.itemsToShow = allItemsInGame.Where(item => item.rarity == sorteada).ToList();
+            Plugin.Instance.Log.LogInfo($"Sorteio: {sorteada}. Encontrado(s) {Plugin.itemsToShow.Count} item(ns) para escolher.");
 
-            Plugin.Instance.Log.LogInfo($"Filtrando para a raridade {sorteada}. Encontrado(s) {Plugin.itemsToShow.Count} item(ns) correspondente(s).");
-
-            Plugin.IsChoosingItem = true;
+            // --- MUDANÇA 2: Usamos nossa função de controle para abrir a UI ---
+            Plugin.OpenCommandUI();
 
             __result = true;
             return false;
